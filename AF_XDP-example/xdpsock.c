@@ -661,6 +661,23 @@ static void swap_mac_addresses(void *data)
 	*dst_addr = tmp;
 }
 
+static void swap_ip_addresses(void *data)
+{
+	struct ether_header *eth = (struct ether_header *)data;
+	struct iphdr *ip_hdr = (struct iphdr *)(eth + 1);
+
+	// Extract source and destination IP addresses
+    	struct in_addr src_ip, dst_ip;
+    	src_ip.s_addr = ip_hdr->saddr;
+    	dst_ip.s_addr = ip_hdr->daddr;
+
+    	// Swap the IP addresses
+    	ip_hdr->saddr = dst_ip.s_addr;
+    	ip_hdr->daddr = src_ip.s_addr;
+}
+
+
+
 static void hex_dump(void *pkt, size_t length, u64 addr)
 {
 	const unsigned char *address = (unsigned char *)pkt;
@@ -1755,8 +1772,11 @@ static void l2fwd(struct xsk_socket_info *xsk)
 		addr = xsk_umem__add_offset_to_addr(addr);
 		char *pkt = xsk_umem__get_data(xsk->umem->buffer, addr);
 
-		if (!nb_frags++)
+		if (!nb_frags++) {
 			swap_mac_addresses(pkt);
+			swap_ip_addresses(pkt);
+		}
+
 
 		hex_dump(pkt, len, addr);
 
